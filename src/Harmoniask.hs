@@ -45,6 +45,7 @@ data Note = C | Cs | Db | D | Ds | Eb | E | F | Fs | Gb | G | Gs | Ab | A | As |
 type Pitch = Int -- Midi pitch (C4 = 60)
 
 
+
 -- | Self-explanatory.
 mapEq :: (a -> Bool) -> (a -> a) -> [a] -> [a]
 mapEq is f = map (\x -> if is x then f x else x)
@@ -294,3 +295,4 @@ writers = writeMidi "diocane.mid" $ createMidiFile $ exampleTrack
 
 writeNewMidiFile :: MidiFile -> IO ()
 writeNewMidiFile = writeMidi "diocane.mid" 
+
