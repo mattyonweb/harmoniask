@@ -1,4 +1,5 @@
 {-# LANGUAGE NumericUnderscores #-}
+
 module Harmoniask where
 
 import ZMidi.Core
@@ -37,8 +38,9 @@ instance Ord Interval where
   compare (Up x) (Interval y) = compare x y
   compare (Interval x) (Up y) = compare x y
   
-  compare (Up x) _ = GT
-  compare (Down x) _ = LT
+  compare (Up _) _ = GT
+  compare (Down _) _ = LT
+  compare (Interval _) _ = GT
   -- Orribile.
 
 -- |Used only for convenience, not important
@@ -334,7 +336,7 @@ createMidiFile track =
 data MidiOptions = MidiOptions
   { bpm :: Word32
   , shortestPath :: Maybe (Pitch -> Sequence -> [[Pitch]])
-  , tuning :: Maybe (HT.Temperament Float)
+  , tuning :: Maybe HT.Temperament
 }
 
 -- | Given a list of chords (i.e. `[[Pitch]]`) returns a `MidiTrack`.
@@ -345,7 +347,7 @@ makeTrack (MidiOptions bpm mayShortest mayTuning) chords =
   where seqRealizer = if isNothing mayShortest then realizeSeq else realizeSeqCompact
 
 
-trackPreamble :: Word32 -> Maybe (HT.Temperament Float) -> [MidiMessage]
+trackPreamble :: Word32 -> Maybe HT.Temperament -> [MidiMessage]
 trackPreamble bpm tuning = 
   [ (0,MetaEvent (SetTempo $ bpmToMidiTempo bpm))
   , (0,MetaEvent (TimeSignature 4 2 24 8))        -- 4/4
@@ -362,7 +364,7 @@ trackPreamble bpm tuning =
 midiChorder :: [Pitch] -> [MidiMessage]
 midiChorder c = concat $ [notesOn, notesOff]
   where notesOn  = map (\pitch -> (0, VoiceEvent RS_OFF (NoteOn 0 (fromIntegral pitch) 100))) c
-        notesOff = map (\pitch -> (16, VoiceEvent RS_OFF (NoteOff 0 (fromIntegral pitch) 64))) c
+        notesOff = map (\pitch -> (64, VoiceEvent RS_OFF (NoteOff 0 (fromIntegral pitch) 0))) c
 
 
 
@@ -381,10 +383,10 @@ writeMidiFile = writeMidi
 
 
 
-exampleHarmony = emptyHarmony ii_v_i
+exampleHarmony = emptyHarmony $ Sequence [Interval Unison] [remove (Interval Fifth) majTriad]
 examplePitches = realizeHarmonyWith (noteToMidi C) realizeSeq exampleHarmony
-exampleTrack = makeTrack (MidiOptions 50 Nothing (Just strangeHz)) examplePitches
-exampleWrite = writeMidiFile "examples/chordsPy.mid" $ createMidiFile $ exampleTrack
+exampleTrack = makeTrack (MidiOptions 50 Nothing Nothing) examplePitches
+exampleWrite = writeMidiFile "examples/chordsEq.mid" $ createMidiFile $ exampleTrack
 
 
       
