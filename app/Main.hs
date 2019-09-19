@@ -1,8 +1,8 @@
 module Main where
 
 import Harmoniask
-import HarmoniaskParser as HP
-import HarmoniaskTuning as HT
+import Harmoniask.Parser as HP
+import Harmoniask.Tunings as HT
 import Data.Word (Word32)
 import Data.List (intercalate)
 import Options.Applicative

@@ -6,7 +6,7 @@ import ZMidi.Core
 import Data.List (sort, elemIndex, concatMap)
 import Data.Maybe (fromJust, isNothing)
 import GHC.Word
-import HarmoniaskTuning as HT
+import Harmoniask.Tunings as HT
 
 -- |This datatype codifies interval distances.
 data Distance = Unison | SecondMin | SecondMaj | ThirdMin | ThirdMaj | Fourth | Tritone | Fifth | SixthMin | SixthMaj | SeventhMin | SeventhMaj | NinthMin | NinthMaj | TenthMin | TenthMaj | Eleventh | OctaveTritone | Twelfth | ThirteenthMin | ThirteenthMaj | DoubleSeventhMin | DoubleSeventhMaj | DoubleOctave

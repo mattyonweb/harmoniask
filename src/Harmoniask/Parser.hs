@@ -1,4 +1,4 @@
-module HarmoniaskParser where
+module Harmoniask.Parser where
 
 import Harmoniask
 import Text.ParserCombinators.ReadP

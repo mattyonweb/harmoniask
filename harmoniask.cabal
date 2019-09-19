@@ -28,12 +28,13 @@ source-repository head
 library
   exposed-modules:
       Harmoniask
-      HarmoniaskParser
-      HarmoniaskTuning
+      Harmoniask.Parser
+      Harmoniask.Tunings
   other-modules:
       Paths_harmoniask
   hs-source-dirs:
       src
+      , src/Harmoniask
   build-depends:
                       base >=4.7 && <5
                 , QuickCheck >= 2.13.2
@@ -61,21 +62,16 @@ executable harmoniask-exe
 
 test-suite harmoniask-test
   type: exitcode-stdio-1.0
-  main-is: Spec.hs
+  main-is: TestTuning.hs
   other-modules:
-      MusicaTesting
-      TuningTests
       Paths_harmoniask
   hs-source-dirs:
       test
   ghc-options: -threaded -rtsopts -with-rtsopts=-N
   build-depends:
-                        base >=4.7 && <5
-                , QuickCheck
-                , QuickCheck >= 2.13.2
+                base >=4.7 && <5
                 , QuickCheck >= 2.13.2
                 , harmoniask
-                , hspec
                 , hspec >= 2.7.1
                 , optparse-applicative
                 , random

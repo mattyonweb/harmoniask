@@ -8,25 +8,31 @@ Stability   : experimental
 This module contains way to achieve alternative tunings via Midi Standard Tuning (MST).
 -}
 
-module HarmoniaskTuning
--- (
---   -- * Types
---   Temperament,
---   Freqs,
+module Harmoniask.Tunings
+(
+  -- * Types
+  Temperament,
+  Freqs,
   
---   -- * Temperaments
---   DefaultTuning,
---   temperament,
---   eqHz,
---   pytHz,
---   werck1Hz,
---   strangeHz,
+  -- * Temperaments
+  DefaultTuning(..),
+  temperament,
+  eqHz,
+  pytHz,
+  werck1Hz,
+  strangeHz,
+  pianoRange,
   
---   -- * Midi
---   makeMap,
---   changeTuningMessage,
---   splitTuningMessage
---   )
+  -- * Conversion functions
+  midiFineTune,
+  transform,
+  freqsToCents,
+  
+  -- * Midi
+  makeMap,
+  changeTuningMessage,
+  splitTuningMessage
+  )
 where
 
 

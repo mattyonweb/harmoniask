@@ -1,11 +1,9 @@
-module TuningTests where
-
 import Test.Hspec
 import Test.QuickCheck
 import Control.Exception (evaluate)
 import Control.Monad (zipWithM_)
 import Data.Bits as DB
-import HarmoniaskTuning as HT
+import Harmoniask.Tunings as HT
 
 main :: IO ()
 main = hspec $ do
@@ -64,5 +62,3 @@ prop_cents_internal f1 f2 =  property $
 
         within :: Real a => a -> a -> Bool
         within a b = abs (a - b) <= 1
-        
-fromBin x = chunks 4 $ drop 16 $ concat $ map (\b -> if b then "1" else "0") $ reverse $ map (testBit x) [0..31]
