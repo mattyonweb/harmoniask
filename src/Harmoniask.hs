@@ -1,11 +1,14 @@
+{-# LANGUAGE NumericUnderscores #-}
 module Harmoniask where
 
 import ZMidi.Core
 import Data.List (sort, elemIndex, concatMap)
-import Data.Maybe (fromJust)
+import Data.Maybe (fromJust, isNothing)
+import GHC.Word
+import HarmoniaskTuning as HT
 
 -- |This datatype codifies interval distances.
-data Distance = Unison | SecondMin | SecondMaj | ThirdMin | ThirdMaj | Fourth | Tritone | Fifth | SixthMin | SixthMaj | SeventhMin | SeventhMaj | Octave | NinthMin | NinthMaj | TenthMin | TenthMaj | Eleventh | OctaveTritone | Twelfth | ThirteenthMin | ThirteenthMaj | DoubleSeventhMin | DoubleSeventhMaj | DoubleOctave
+data Distance = Unison | SecondMin | SecondMaj | ThirdMin | ThirdMaj | Fourth | Tritone | Fifth | SixthMin | SixthMaj | SeventhMin | SeventhMaj | NinthMin | NinthMaj | TenthMin | TenthMaj | Eleventh | OctaveTritone | Twelfth | ThirteenthMin | ThirteenthMaj | DoubleSeventhMin | DoubleSeventhMaj | DoubleOctave
   deriving (Show, Eq, Enum, Ord)
 
 
@@ -14,9 +17,9 @@ data Accident = Sharp | Flat deriving (Show, Eq)
   
 -- |Codifies intervals and their possible movement up or down.
 data Interval =
-    Up Distance
-  | Down Distance
-  | Interval Distance -- Lo so. È brutto ma necessario per creare linee melodiche altalenanti
+    Up Distance -- ^ An interval jumping up.
+  | Down Distance -- ^ An interval jumping down.
+  | Interval Distance -- ^ An interval where it is irrilevant whether it is jumping up or down. 
   deriving (Show, Eq)
 
 instance Enum Interval where
@@ -36,7 +39,7 @@ instance Ord Interval where
   
   compare (Up x) _ = GT
   compare (Down x) _ = LT
-  -- Manca!
+  -- Orribile.
 
 -- |Used only for convenience, not important
 data Note = C | Cs | Db | D | Ds | Eb | E | F | Fs | Gb | G | Gs | Ab | A | As | Bb | B
@@ -45,8 +48,8 @@ data Note = C | Cs | Db | D | Ds | Eb | E | F | Fs | Gb | G | Gs | Ab | A | As |
 type Pitch = Int -- Midi pitch (C4 = 60)
 
 
+-- ** Utility functions
 
--- | Self-explanatory.
 mapEq :: (a -> Bool) -> (a -> a) -> [a] -> [a]
 mapEq is f = map (\x -> if is x then f x else x)
 
@@ -57,7 +60,8 @@ rotateWith func n xs = sort $ newStart ++ (map func newEnd)
         newStart = drop n xs
 
 
-        
+-- * Notes and intervals
+
 -------------------------
 -- Notes and intervals --
 -------------------------
@@ -102,6 +106,8 @@ alter int Flat  = toEnum (fromEnum int - 1)
 alter int Sharp = toEnum (fromEnum int + 1)
 
 
+-- * Chords
+
 -------------------------
 -- Chords fundamentals --
 -------------------------
@@ -118,7 +124,7 @@ inversion num (Chord is) = Chord $ rotate num is
 
 
 
--- Combinators for creating chords.
+-- ** Combinators for creating chords.
 
 -- | Adds an interval on top.
 addOnTop :: Interval -> Chord -> Chord
@@ -142,7 +148,8 @@ sorted (Chord is) = Chord $ Data.List.sort is
 
 
 
--- Real Chords
+-- ** Real Chords
+
 majTriad = Chord [Interval Unison, Interval ThirdMaj, Interval Fifth]
 minTriad = Chord [Interval Unison, Interval ThirdMin, Interval Fifth]
 
@@ -154,56 +161,103 @@ x_13   = addOnTop (Interval ThirteenthMaj)
 sus4   = remove (Interval ThirdMaj) |> remove (Interval ThirdMin) |> addOnTop (Interval Fourth) |> sorted
 soWhat = Chord $ map Interval [ThirdMaj, SixthMaj, NinthMaj, Twelfth, DoubleSeventhMaj]
 
--- | Realizes a chord, that is to say: given a Chord and a tonic, builds the Midi-pitch
---   rapresentation of the chord.
+-- | Realizes a chord, that is: given a Chord and a tonic, builds the Midi-pitch
+--   representation of the chord.
 realizeChord :: Chord -> Pitch -> [Pitch]
 realizeChord (Chord is) tonic = line tonic is
 
 
 
+-- * Sequences
+
 -------------------------
 -- Sequences of chords --
 -------------------------
+
+{- |
+  A `Sequence` is a list of `Interval`s (the bass-line) and of `Chord`s.
+
+  The bass-line has the form of a list of `Interval`; in a way, you could
+describe a `Sequence` as a sequence of chords in a single tonality; or, also,
+a sequence of chords that doesn't modulate.
+
+  For every bass note at index i in `[Interval]`, the chord at index i of `[Chord]` will be built.
+
+  An example of a ii-V-I sequence:
+
+  >>> ii_v_i
+  Sequence [Interval SecondMaj,Interval Fifth,Interval Unison]
+           [Chord [Interval Unison,Interval ThirdMin,Interval Fifth,Interval SeventhMin],
+            Chord [Interval Unison,Interval ThirdMaj,Interval Fifth,Interval SeventhMin],
+            Chord [Interval Unison,Interval ThirdMaj,Interval Fifth,Interval SeventhMaj]]
+-}
 data Sequence = Sequence [Interval] [Chord] deriving (Show, Eq)
 
--- Sequences combinators
+-- ** Sequences combinators
+
+-- |Remove the last index and chord of a sequence.
 removeLastSeq :: Sequence -> Sequence
 removeLastSeq (Sequence is cs) = Sequence (init is) (init cs)
 
+-- |Substitute every occurrence of @(Interval, Chord)@ with another tuple.
 substitution :: (Interval, Chord) -> (Interval, Chord) -> Sequence -> Sequence
 substitution old new (Sequence is cs) = Sequence (map fst subbed) (map snd subbed)
   where couples = zip is cs
         subbed  = mapEq (== old) (\_ -> new) couples
-  
+
+-- |Tritone substitution.
 tritoneSub :: Sequence -> Sequence
 tritoneSub = substitution
              (Interval Fifth, x_7 majTriad)
              (Interval SecondMin, x_7 majTriad)
-                 
+
+-- |So What? substitution; re-harmonizes maj7 chords on @I@ with soWhat chords
 soWhatSub :: Sequence -> Sequence
 soWhatSub = substitution
             (Interval Unison, x_maj7 majTriad)
             (Interval Unison, soWhat)
-            
--- rootlessVoicing :: Sequence -> Sequence
--- rootlessVoicing (Sequence _ cs) = map (
+
 (|>>|) :: (Sequence -> Sequence) -> (Sequence -> Sequence) -> Sequence -> Sequence
 (|>>|) = (.)
 
 
--- Concretize a Sequence by translating it to numerical MIDI values
+{- |
+  Realize a `Sequence`, that is: given a starting `Pitch`, build the chords on the intervals
+relative to that midi pitch.
+
+  For example:
+
+  >>> realizeSeq 60 ii_v_i
+  [[62,65,69,72],[67,71,74,77],[60,64,67,71]]
+
+  Here, the @Interval Unison@ is set at pitch 60 (central C), so every interval is
+calculated relative to 60 (eg. @Interval SecondMaj@ will be 62).
+-}
 realizeSeq :: Pitch -> Sequence -> [[Pitch]]
 realizeSeq tonica (Sequence intervals chords) =
     zipWith (flip realizeChord) bassline chords
   where bassline = line tonica intervals
 
+-- ** Shortest Sequence Realization
+{- |
+  Same as `realizeSeq`, but attempts to find the "nearest" substituions in the sequence.
 
--- Concretize a Sequence by translating it to numerical MIDI values
+  This means that, given two consecutive chords @C1@ and @C2@, @C2@ will be realized
+with the inversion that minimizes the distance with @C1@.
+
+  For example:
+
+  >>> realizeSeqCompact 60 ii_v_i
+  [[62,65,69,72],[62,65,67,71],[60,64,67,71]]
+
+  Note: albeit being very easy to implement, this function still doesn't work properly.
+-}
 realizeSeqCompact :: Pitch -> Sequence -> [[Pitch]]
 realizeSeqCompact tonica (Sequence intervals chords) = scanl1 shortestPathMidi realizedChords
   where bassline       = line tonica intervals
         realizedChords = zipWith (flip realizeChord) bassline chords
-        
+
+-- | All the inversions of a `Pitch`-chord
 inversionMidi :: [Pitch] -> [[Pitch]]
 inversionMidi ns = concat $ map -- use non-deterministic monad? >>= on list
                    (\rot -> [rotateWith id rot ns,
@@ -211,6 +265,7 @@ inversionMidi ns = concat $ map -- use non-deterministic monad? >>= on list
                              map (subtract 12) $ rotateWith (+12) rot ns])
                    [0..length ns]
 
+-- | Find the "shortest" chord among the inversions of @C2@, relative to @C1@.
 shortestPathMidi :: [Pitch] -> [Pitch] -> [Pitch]
 shortestPathMidi c1 c2 = inversions' !! indexMin
   where inversions' = inversionMidi c2
@@ -218,8 +273,7 @@ shortestPathMidi c1 c2 = inversions' !! indexMin
         indexMin  = fromJust $ elemIndex (minimum ratedInversions) ratedInversions
 
 
-
--- -- Real sequences
+-- ** Some real sequences
 v_i    = Sequence [Interval Fifth, Interval Unison]
                   [x_7 majTriad, x_maj7 majTriad]
 ii_v_i = Sequence [Interval SecondMaj, Interval Fifth, Interval Unison]
@@ -228,8 +282,17 @@ ii_v_tritone = (removeLastSeq |>>| tritoneSub) ii_v_i
 
 
 
-data Harmony = Harmony [Interval] [Sequence] --tonalità - accordi
+-- * Harmonies
 
+{- |
+  An `Harmony` is basically a collection of sequences, each of which has its own tonality.
+
+  One big difference with `Sequence`s is that the @[Interval]@s are now relative to each other.
+-}
+data Harmony = Harmony [Interval] [Sequence] --tonalità - accordi
+  deriving (Show, Eq)
+
+-- |A simple harmony with no modulation; it is basically a `Sequence`.
 emptyHarmony :: Sequence -> Harmony
 emptyHarmony seq = Harmony [Interval Unison] [seq]
 
@@ -238,14 +301,18 @@ circleFifths = Harmony ints seqs
   where ints = replicate 12 (Down SecondMaj)
         seqs = replicate 12 ii_v_i
 
+-- | Coltrane changes harmony.
 coltrane :: Harmony
 coltrane = Harmony ints seqs
   where ints = concat $ replicate 3 [Up ThirdMaj, Down SixthMin]
         seqs = replicate 3 v_i
 
+-- | Realize an `Harmony`.
 realizeHarmony :: Pitch -> Harmony -> [[Pitch]]
 realizeHarmony note harmony = realizeHarmonyWith note realizeSeq harmony 
-  
+
+-- | Realize an `Harmony`, with the possibility to choose a custom sequence-realizing
+-- function (eg. `realizeSeqCompact`).
 realizeHarmonyWith :: Pitch -> (Pitch -> Sequence -> [[Pitch]]) -> Harmony -> [[Pitch]]
 realizeHarmonyWith note seqRealizer (Harmony is seq) =
   concat $ map (\(tonica, s) -> seqRealizer tonica s) zipped
@@ -253,46 +320,73 @@ realizeHarmonyWith note seqRealizer (Harmony is seq) =
         zipped   = zip bassline seq
 
 
+------------------------------------------------------------------------------------
 
+-- ** Midi Exporting
 
--- ** MIDI EXPORTING
-
--- | Creates a MidiFile given a track
+-- | Creates a complete MIDI file given a `MidiTrack`.
 createMidiFile :: MidiTrack -> MidiFile
-createMidiFile track = MidiFile
-  (MidiHeader MF0 1 (TPB 80))
-  [track]
+createMidiFile track =
+  MidiFile (MidiHeader MF0 1 (TPB 80))
+           [track] --only 1 track!
 
-makeTrack :: [[Pitch]] -> MidiTrack
-makeTrack chords = MidiTrack $
-  trackTemplate ++ concatMap midiChorder chords
 
--- | Translates Chords Pitches in Midi signals
+data MidiOptions = MidiOptions
+  { bpm :: Word32
+  , shortestPath :: Maybe (Pitch -> Sequence -> [[Pitch]])
+  , tuning :: Maybe (HT.Temperament Float)
+}
+
+-- | Given a list of chords (i.e. `[[Pitch]]`) returns a `MidiTrack`.
+makeTrack :: MidiOptions -> [[Pitch]] -> MidiTrack
+makeTrack (MidiOptions bpm mayShortest mayTuning) chords =
+  MidiTrack $ (trackPreamble bpm mayTuning) ++ concatMap midiChorder chords
+
+  where seqRealizer = if isNothing mayShortest then realizeSeq else realizeSeqCompact
+
+
+trackPreamble :: Word32 -> Maybe (HT.Temperament Float) -> [MidiMessage]
+trackPreamble bpm tuning = 
+  [ (0,MetaEvent (SetTempo $ bpmToMidiTempo bpm))
+  , (0,MetaEvent (TimeSignature 4 2 24 8))        -- 4/4
+  , (0,VoiceEvent RS_OFF (ProgramChange 0 0))     -- instrument
+  ] ++ tuningMessage
+  
+  where tuningMessage = if isNothing tuning 
+                        then [(0, MetaEvent (TextEvent SEQUENCE_NAME "Standard tuning!"))]
+                        -- else HT.changeTuningMessage (fromJust tuning)
+                        else HT.splitTuningMessage $ HT.changeTuningMessage (fromJust tuning)
+
+
+-- | Translates [Pitch] into MIDI messages.
 midiChorder :: [Pitch] -> [MidiMessage]
 midiChorder c = concat $ [notesOn, notesOff]
   where notesOn  = map (\pitch -> (0, VoiceEvent RS_OFF (NoteOn 0 (fromIntegral pitch) 100))) c
         notesOff = map (\pitch -> (16, VoiceEvent RS_OFF (NoteOff 0 (fromIntegral pitch) 64))) c
 
-  
-exampleTrack :: MidiTrack
-exampleTrack = makeTrack $
-  realizeHarmonyWith (noteToMidi C) realizeSeqCompact circleFifths
-  
-trackTemplate :: [MidiMessage]
-trackTemplate = [
-  (0,MetaEvent (TextEvent SEQUENCE_NAME "")),
-  (0,MetaEvent (SetTempo 500000)),
-  (0,MetaEvent (TimeSignature 4 2 24 8)),
-  (0,VoiceEvent RS_OFF (ProgramChange 0 0)),
-  (0,VoiceEvent RS_OFF (Controller 0 10 64)),
-  (0,VoiceEvent RS_ON (Controller 0 93 0)),
-  (0,VoiceEvent RS_ON (Controller 0 7 100)),
-  (0,VoiceEvent RS_ON (Controller 0 91 0))]
 
 
-writers :: IO ()
-writers = writeMidi "diocane.mid" $ createMidiFile $ exampleTrack
+-- | BPM to MIDI tempo converter.
+bpmToMidiTempo :: Word32 -> Word32
+bpmToMidiTempo bpm = 60_000_000 `div` bpm
 
-writeNewMidiFile :: MidiFile -> IO ()
-writeNewMidiFile = writeMidi "diocane.mid" 
+
+
+
+
+
+
+writeMidiFile :: String -> MidiFile -> IO ()
+writeMidiFile = writeMidi
+
+
+
+exampleHarmony = emptyHarmony ii_v_i
+examplePitches = realizeHarmonyWith (noteToMidi C) realizeSeq exampleHarmony
+exampleTrack = makeTrack (MidiOptions 50 Nothing (Just strangeHz)) examplePitches
+exampleWrite = writeMidiFile "examples/chordsPy.mid" $ createMidiFile $ exampleTrack
+
+
+      
+--------------
 

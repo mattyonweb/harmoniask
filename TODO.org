@@ -1,0 +1,11 @@
+* MIDI
+** Add a tempo (BPM) parameter somewhere
+
+* Notes
+** Change from C, Cb, ... to (C, 4) to indicate C4.
+
+* Harmonies
+** The shortest path from chords doesn't work inter-sequences.
+
+* Altro
+** Change or remove |>>| e |>
