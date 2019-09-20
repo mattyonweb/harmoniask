@@ -268,11 +268,13 @@ data Sequence = Sequence [Interval] [Chord] deriving (Show, Eq)
 
 {- |
 Remove the last index and chord of a sequence.
+-}
 removeLastSeq :: Sequence -> Sequence
 removeLastSeq (Sequence is cs) = Sequence (init is) (init cs)
 
 {- |
 Substitute every occurrence of @(Interval, Chord)@ with another tuple.
+-}
 substitution :: (Interval, Chord) -> (Interval, Chord) -> Sequence -> Sequence
 substitution old new (Sequence is cs) = Sequence (map fst subbed) (map snd subbed)
   where couples = zip is cs
@@ -280,6 +282,7 @@ substitution old new (Sequence is cs) = Sequence (map fst subbed) (map snd subbe
 
 {- |
 Tritone substitution.
+-}
 tritoneSub :: Sequence -> Sequence
 tritoneSub = substitution
              (Fifth, x_7 majTriad)
@@ -287,6 +290,7 @@ tritoneSub = substitution
 
 {- |
 So What? substitution; re-harmonizes maj7 chords on @I@ with soWhat chords
+-}
 soWhatSub :: Sequence -> Sequence
 soWhatSub = substitution
             (Unison, x_maj7 majTriad)
@@ -314,6 +318,7 @@ realizeSeq tonica (Sequence intervals chords) =
   where bassline = line tonica intervals
 
 -- ** Shortest Sequence Realization
+
 {- |
   Same as `realizeSeq`, but attempts to find the "nearest" substituions in the sequence.
 
@@ -334,6 +339,7 @@ realizeSeqCompact tonica (Sequence intervals chords) = scanl1 shortestPathMidi r
 
 {- |
  All the inversions of a `Pitch`-chord
+-}
 inversionMidi :: [Pitch] -> [[Pitch]]
 inversionMidi ns = concat $ map -- use non-deterministic monad? >>= on list
                    (\rot -> [rotateWith id rot ns,
@@ -343,6 +349,7 @@ inversionMidi ns = concat $ map -- use non-deterministic monad? >>= on list
 
 {- |
  Find the "shortest" chord among the inversions of @C2@, relative to @C1@.
+-}
 shortestPathMidi :: [Pitch] -> [Pitch] -> [Pitch]
 shortestPathMidi c1 c2 = inversions' !! indexMin
   where inversions' = inversionMidi c2
@@ -371,6 +378,7 @@ data Harmony = Harmony [MelodicInterval] [Sequence] --tonalità - accordi
 
 {- |
 A simple harmony with no modulation; it is basically a `Sequence`.
+-}
 emptyHarmony :: Sequence -> Harmony
 emptyHarmony seq = Harmony [Up Unison] [seq]
 
@@ -381,6 +389,7 @@ circleFifths = Harmony ints seqs
 
 {- |
  Coltrane changes harmony.
+-}
 coltrane :: Harmony
 coltrane = Harmony ints seqs
   where ints = concat $ replicate 3 [Up ThirdMaj, Down SixthMin]
@@ -388,12 +397,14 @@ coltrane = Harmony ints seqs
 
 {- |
  Realize an `Harmony`.
+-}
 realizeHarmony :: Pitch -> Harmony -> [[Pitch]]
 realizeHarmony note harmony = realizeHarmonyWith note realizeSeq harmony 
 
 {- |
  Realize an `Harmony`, with the possibility to choose a custom sequence-realizing
--- function (eg. `realizeSeqCompact`).
+function (eg. `realizeSeqCompact`).
+-}
 realizeHarmonyWith :: Pitch -> (Pitch -> Sequence -> [[Pitch]]) -> Harmony -> [[Pitch]]
 realizeHarmonyWith note seqRealizer (Harmony is seq) =
   concatMap (\(tonica, s) -> seqRealizer tonica s) zipped
@@ -407,6 +418,7 @@ realizeHarmonyWith note seqRealizer (Harmony is seq) =
 
 {- |
  Creates a complete MIDI file given a `MidiTrack`.
+-}
 createMidiFile :: MidiTrack -> MidiFile
 createMidiFile track =
   MidiFile (MidiHeader MF0 1 (TPB 80))
@@ -421,6 +433,7 @@ data MidiOptions = MidiOptions
 
 {- |
  Given a list of chords (i.e. `[[Pitch]]`) returns a `MidiTrack`.
+-}
 makeTrack :: MidiOptions -> [[Pitch]] -> MidiTrack
 makeTrack (MidiOptions bpm mayShortest mayTuning) chords =
   MidiTrack $ (trackPreamble bpm mayTuning) ++ concatMap midiChorder chords
@@ -443,6 +456,7 @@ trackPreamble bpm tuning =
 
 {- |
  Translates [Pitch] into MIDI messages.
+-}
 midiChorder :: [Pitch] -> [MidiMessage]
 midiChorder c = concat $ [notesOn, notesOff]
   where notesOn  = map (\pitch -> (0, VoiceEvent RS_OFF (NoteOn 0 (fromIntegral pitch) 100))) c
@@ -452,6 +466,7 @@ midiChorder c = concat $ [notesOn, notesOff]
 
 {- |
  BPM to MIDI tempo converter.
+-}
 bpmToMidiTempo :: Word32 -> Word32
 bpmToMidiTempo bpm = 60_000_000 `div` bpm
 

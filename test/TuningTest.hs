@@ -1,3 +1,5 @@
+module TuningTest where
+
 import Test.Hspec
 import Test.QuickCheck
 import Control.Exception (evaluate)
@@ -5,8 +7,9 @@ import Control.Monad (zipWithM_)
 import Data.Bits as DB
 import Harmoniask.Tunings as HT
 
-main :: IO ()
-main = hspec $ do
+
+mainTuningTest :: IO ()
+mainTuningTest = hspec $ do
   describe "HT (Harmoniask Tuning)" $ do
     zipWithM_ temperamentTest [eqHz, pytHz, werck1Hz, strangeHz]
                               ["Equable", "Pythagoric", "Werckmeister", "Strange"]

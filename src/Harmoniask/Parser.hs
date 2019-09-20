@@ -3,6 +3,7 @@ module Harmoniask.Parser where
 import Harmoniask
 import Text.ParserCombinators.ReadP
 import Data.Maybe (fromJust)
+import Data.Char (toUpper)
 
 readAccident :: Char -> Maybe Accident
 readAccident 'b' = Just Flat
@@ -16,14 +17,14 @@ data Tonality = Major | Minor
 data ColorNote = ColorNote Interval (Maybe Accident)
   deriving (Eq, Show)
 readColorNoteDiatonic :: String -> Interval
-readColorNoteDiatonic "4" = Interval Fourth
-readColorNoteDiatonic "5" = Interval Fifth
-readColorNoteDiatonic "9" = Interval NinthMaj
-readColorNoteDiatonic "11" = Interval Eleventh
-readColorNoteDiatonic "13" = Interval ThirteenthMaj
+readColorNoteDiatonic "4" = Fourth
+readColorNoteDiatonic "5" = Fifth
+readColorNoteDiatonic "9" = NinthMaj
+readColorNoteDiatonic "11" = Eleventh
+readColorNoteDiatonic "13" = ThirteenthMaj
 readColorNoteDiatonic x    = error "This should not happen"
 
-data ColorForm = Sus2 | Sus4 | Simple7 | Maj7
+data ColorForm = Sus2 | Sus4 | Simple7 | Maj7 | NoColorForm
   deriving (Eq, Show)
 readColorForm :: String -> ColorForm
 readColorForm "sus2" = Sus2
@@ -57,6 +58,7 @@ parsedToPitches (ParsedChord (tonic, mayAcc) tonality form colorNotes) =
           Sus4 -> sus4
           Maj7 -> x_maj7
           Simple7 -> x_7
+          NoColorForm -> id
         colNs = map (\(ColorNote i acc) ->
                        if acc == Nothing
                        then i
@@ -76,23 +78,23 @@ isAccident char =
   any (char ==) "b#♭"
 
 
--- | C#-maj7b9b13
+-- | __C#__-maj7b9b13
 --   ^^ 
 tonicParser :: ReadP (Note, Maybe Accident)
 tonicParser = do
-  n <- fmap (\x -> (read [x]) :: Note) $ satisfy isDiatonicNote
+  n <- fmap (\x -> (read [toUpper x]) :: Note) $ satisfy isDiatonicNote
   a <- option ' ' (satisfy isAccident)
 
   return (n, readAccident a)
 
--- | C#-maj7b9b13
+-- | C#__-__maj7b9b13
 --     ^ 
 tonalityParser :: ReadP Tonality
 tonalityParser = do
   ton <- option '+' (satisfy (\c -> any (c ==) "+-"))
   return $ if ton == '+' then Major else Minor
 
--- | C#-maj7b9b13
+-- | C#-maj7__b9b13__
 --          ^^^^^
 colorNoteParser :: ReadP ColorNote
 colorNoteParser = do
@@ -100,8 +102,7 @@ colorNoteParser = do
   n <- fmap readColorNoteDiatonic $ choice $ map string ["4", "5", "9", "11", "13"]
   return $ ColorNote n (readAccident a)
 
--- | C#-maj7b9b13
---      ^^^^
+-- | C#-__maj7__b9b13
 colorFormParser :: ReadP ColorForm
 colorFormParser =
   fmap readColorForm $ choice $ map string $ ["7", "maj7", "sus2", "sus4"]
@@ -111,25 +112,25 @@ colorFormParser =
 chord :: ReadP ParsedChord
 chord = do
   tonik <- tonicParser
-  ton   <- tonalityParser
-  form  <- colorFormParser
+  ton   <- option Major tonalityParser
+  form  <- option NoColorForm colorFormParser
   cols  <- many colorNoteParser
   return $ ParsedChord tonik ton form cols
   
 stringToPitches :: String -> [Pitch]
 stringToPitches = parsedToPitches . fst . last . readP_to_S chord
 
-stringToPitches2 :: String -> Maybe [Pitch]
-stringToPitches2 s = fmap parsedToPitches $ result $ readP_to_S chord s
-  where result [] = Nothing
-        result xs = Just $ fst $ last xs
+-- stringToPitches2 :: String -> Maybe [Pitch]
+-- stringToPitches2 s = fmap parsedToPitches $ result $ readP_to_S chord s
+--   where result [] = Nothing
+--         result xs = Just $ fst $ last xs
 
-stringToPitches22 :: String -> Maybe [Pitch]
-stringToPitches22 s = fmap parsedToPitches $ result $ readP_to_S chord s
-  where result [] = Nothing
-        result xs = Just $ fst $ last xs
+-- stringToPitches22 :: String -> Maybe [Pitch]
+-- stringToPitches22 s = fmap parsedToPitches $ result $ readP_to_S chord s
+--   where result [] = Nothing
+--         result xs = Just $ fst $ last xs
         
-stringToPitches3 :: String -> Either String [Pitch]
-stringToPitches3 s = fmap parsedToPitches $ result $ readP_to_S chord s
-  where result [] = Left $ "Parser could not parse the chord " ++ s
-        result xs = Right $ fst $ last xs
+-- stringToPitches3 :: String -> Either String [Pitch]
+-- stringToPitches3 s = fmap parsedToPitches $ result $ readP_to_S chord s
+--   where result [] = Left $ "Parser could not parse the chord " ++ s
+--         result xs = Right $ fst $ last xs

@@ -62,7 +62,7 @@ executable harmoniask-exe
 
 test-suite harmoniask-test
   type: exitcode-stdio-1.0
-  main-is: TestTuning.hs
+  main-is: Tests.hs
   other-modules:
       Paths_harmoniask
   hs-source-dirs:
