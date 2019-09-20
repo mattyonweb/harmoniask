@@ -151,9 +151,9 @@ Tritone
 
 Mostly used for chords alterations.
 -}
-alter :: Interval -> Accident -> Interval
-alter int Flat  = toEnum (fromEnum int - 1)
-alter int Sharp = toEnum (fromEnum int + 1)
+alterInterval :: Interval -> Accident -> Interval
+alterInterval int Flat  = toEnum (fromEnum int - 1)
+alterInterval int Sharp = toEnum (fromEnum int + 1)
 
 
 
@@ -162,6 +162,16 @@ alter int Sharp = toEnum (fromEnum int + 1)
 -------------------------
 -- Chords fundamentals --
 -------------------------
+
+{-
+Data type for a chord.
+
+It is important to underline that `Chord` is an __abstract__ representation of a chord;
+that is to say, it is not made of MIDI pitches but of `Interval`s.
+
+The act of translating this "abstract" chord to a "concrete" chord (ie. a collection of
+MIDI pitches) is called /realization/ (see later).
+-}
 data Chord = Chord [Interval] deriving (Eq, Show)
 
 {- |
@@ -190,8 +200,8 @@ addOnTop i (Chord is) = Chord $ is ++ [i]
 {- |
  Alters an interval in the chord.
 -}
-alterChord :: Interval -> Accident -> Chord -> Chord
-alterChord i accident (Chord is) = Chord $ mapEq (== i) (flip alter accident) is 
+alter :: Interval -> Accident -> Chord -> Chord
+alter i accident (Chord is) = Chord $ mapEq (== i) (flip alterInterval accident) is 
 
 {- |
  Removes an interval from the chord.

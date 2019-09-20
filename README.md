@@ -2,36 +2,65 @@
 
 Exploring jazz music theory with Haskell.
 
+Harmoniask is a little project to embed elements of Jazz music into Haskell, such as chords, substitutions, standard harmonic sequences and so on. 
+
+As a standalone application, it can read a text file containing sequences of chords and output it in a MIDI file, possibly using alternative tunings (eg. Pythagoric, Werckmeister...). Note however that not every MIDI player support the MTS (Midi Tuning Standard) for alternative tunings.
+
+### How to install
+
+	git clone
+	stack build
+	
 ### Some examples
 
-     λ> scale C Major
-     [C,D,E,F,G,A,B]
-     λ> scale Fs Minor
-     [Fs,Gs,A,B,Cs,Ds,F]
-     λ> triad (scale D Major)
-     [D,Fs,A]
-     λ> triad (scale B Diminished)
-     [B,D,F]
-     λ> quadriad (scale C Major)
-     [C,E,G,B]
-     λ> scaleChords (scale C Major)
-     [[C,E,G,B],[D,F,A,C],[E,G,B,D],[F,A,C,E],[G,B,D,F],[A,C,E,G],[B,D,F,A]]
-     λ> ii_v_i (scale C Major)
-     [[D,F,A,C],[G,B,D,F],[C,E,G,B]]
-     λ> take 14 $ coltraneChanges C
-     [[G,B,D,F],[C,E,G,B],[B,Ds,Fs,A],[E,Gs,B,Ds],[Ds,G,As,Cs],[Gs,C,Ds,G],[G,B,D,F],[C,E,G,B],[B,Ds,Fs,A],[E,Gs,B,Ds],[Ds,G,As,Cs],[Gs,C,Ds,G],[G,B,D,F],[C,E,G,B]]
-     λ> tritoneChange $ ii_v_i (scale C Major)
-     [[D,F,A,C],[Cs,F,Gs,B],[C,E,G,B]]
-     λ> inversions $ triad (scale C Major)
-     [[C,E,G],[E,G,C],[G,C,E]]
-     λ> inversions $ quadriad (scale F Augmented)
-     [[F,A,C,E],[A,C,E,F],[C,E,F,A],[E,F,A,C]]
-     λ> let cs@[ii,v,i] = ii_v_i (scale C Major)
-     λ> cs
-     [[D,F,A,C],[G,B,D,F],[C,E,G,B]]
-     λ> shortestPath ii v
-     [D,F,G,B]
-     λ> shortifyChords cs
-     [[D,F,A,C],[D,F,G,B],[C,E,G,B]]
-     λ> shortifyChords $ take 14 $ coltraneChanges C
-     [[G,B,D,F],[G,B,C,E],[Fs,A,B,Ds],[E,Gs,B,Ds],[Ds,G,As,Cs],[Ds,G,Gs,C],[D,F,G,B],[C,E,G,B],[B,Ds,Fs,A],[B,Ds,E,Gs],[Cs,Ds,G,As],[C,Ds,G,Gs],[B,D,F,G],[B,C,E,G]]
+A simple chord, both in its abstract and concrete representations: 
+
+	λ> majTriad
+	Chord [Unison,ThirdMaj,Fifth]
+	λ> realizeChord majTriad 60 -- 60 = Middle C
+	[60,64,67]
+
+Constructing chords via combinators:
+
+	λ> addOnTop SeventhMin majTriad 
+	Chord [Unison,ThirdMaj,Fifth,SeventhMin]
+	
+Constructing more complex chords:
+
+	λ> x_9b = 
+		addOnTop SeventhMin |> 
+		addOnTop NinthMaj   |> 
+		alter NinthMaj Flat |> 
+		remove Fifth
+	
+	λ> x_9b majTriad 
+	Chord [Unison,ThirdMaj,SeventhMin,NinthMin]
+	
+	λ> realizeChord (x_9b majTriad) 60 
+	[60,64,70,72]
+
+Some simple `Sequence` (sequence of chords that stays inside a tonality):
+
+	λ> v_i = Sequence [Fifth, Unison] [x_7 majTriad, x_maj7 majTriad]
+	Sequence [Fifth,Unison] 
+	         [Chord [Unison,ThirdMaj,Fifth,SeventhMin]
+			 ,Chord [Unison,ThirdMaj,Fifth,SeventhMaj]]	
+	
+	λ> realizeSeq 60 v_i
+	[[67,71,74,77],[60,64,67,71]] -- G7 | Cmaj7
+
+Some `Sequence` combinators:
+
+	λ> ii_v_i = Sequence 
+	            [SecondMaj, Fifth, Unison]
+                [x_7 minTriad, x_7 majTriad, x_maj7 majTriad]
+	
+	λ> ii_v_tritone = (removeLastSeq |>>| tritoneSub)
+	λ> ii_v_tritone ii_v_i
+	Sequence [SecondMaj,SecondMin] 
+		     [Chord [Unison,ThirdMin,Fifth,SeventhMin], 
+			  Chord [Unison,ThirdMaj,Fifth,SeventhMin]]
+			  
+	λ> realizeSeq 60 $ ii_v_tritone ii_v_i
+	[[62,65,69,72],[61,65,68,71]] -- D-7 | Db7
+
