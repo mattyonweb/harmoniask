@@ -394,7 +394,7 @@ emptyHarmony seq = Harmony [Up Unison] [seq]
 
 circleFifths :: Harmony
 circleFifths = Harmony ints seqs
-  where ints = replicate 12 (Down SecondMaj)
+  where ints = concat $ replicate 6 [Up Fourth, Down Fifth]
         seqs = replicate 12 ii_v_i
 
 {- |
@@ -491,7 +491,7 @@ writeMidiFile = writeMidi
 
 
 
-exampleHarmony = emptyHarmony $ Sequence [Unison] [remove Fifth majTriad]
+exampleHarmony = circleFifths
 examplePitches = realizeHarmonyWith (noteToMidi C) realizeSeq exampleHarmony
 exampleTrack = makeTrack (MidiOptions 50 Nothing Nothing) examplePitches
 exampleWrite = writeMidiFile "examples/chordsEq.mid" $ createMidiFile $ exampleTrack

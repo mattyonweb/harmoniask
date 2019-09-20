@@ -17,6 +17,7 @@ A simple chord, both in its abstract and concrete representations:
 
 	λ> majTriad
 	Chord [Unison,ThirdMaj,Fifth]
+	
 	λ> realizeChord majTriad 60 -- 60 = Middle C
 	[60,64,67]
 
@@ -63,4 +64,40 @@ Some `Sequence` combinators:
 			  
 	λ> realizeSeq 60 $ ii_v_tritone ii_v_i
 	[[62,65,69,72],[61,65,68,71]] -- D-7 | Db7
+
+Realizing a `Sequence` while trying to reduce the distance between the notes of subsequent chords: 
+
+	λ> realizeSeqCompact 60 ii_v_i
+	[[62,65,69,72], -- D-7
+	 [62,65,67,71], -- G7, 2nd inversion
+	 [60,64,67,71]] -- Cmaj7
+	
+Creating `Harmony`s, a collection of sequences in different tonalities:
+
+	circleFifths :: Harmony
+	circleFifths = Harmony intervals sequences
+		where intervals = concat $ replicate 6 [Up Fourth, Down Fifth]
+		sequences       = replicate 12 ii_v_i
+
+	> circleFifths
+	Harmony 
+		[Up Fourth, Down Fifth, Up Fourth, Down Fifth...] 
+		[Sequence [SecondMaj,Fifth,Unison] 
+		          [Chord [Unison,ThirdMin,Fifth,SeventhMin],
+				   Chord [Unison,ThirdMaj,Fifth,SeventhMin],
+				   Chord [Unison,ThirdMaj,Fifth,SeventhMaj]],
+	     Sequence [SecondMaj,Fifth,Unison] 
+		          [Chord [Unison,ThirdMin,Fifth,SeventhMin],
+				   Chord [Unison,ThirdMaj,Fifth,SeventhMin],
+				   Chord [Unison,ThirdMaj,Fifth,SeventhMaj]],
+	     Sequence ... ... ... ]
+		 
+Exporting to a Midi file:
+
+	λ> examplePitches = realizeHarmonyWith (noteToMidi C) realizeSeqCompact circleFifths
+	λ> exampleTrack = makeTrack (MidiOptions 120 Nothing Nothing) examplePitches
+	λ> writeMidiFile "examples/out.mid" $ createMidiFile $ exampleTrack
+
+[Here](examples/out.mid) is the result.
+
 
