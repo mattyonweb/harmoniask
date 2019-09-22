@@ -1,4 +1,6 @@
+{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE NumericUnderscores #-}
+{-# LANGUAGE TypeSynonymInstances #-}
 
 module Harmoniask where
 
@@ -73,9 +75,12 @@ instance MusicalInterval MelodicInterval where
 {- |
 Used only for convenience, not really important.
 -}
-data Note = C | Cs | Db | D | Ds | Eb | E | F | Fs | Gb | G | Gs | Ab | A | As | Bb | B
+data NoteName = C | Cs | Db | D | Ds | Eb | E | F | Fs | Gb | G | Gs | Ab | A | As | Bb | B
   deriving (Show, Eq, Read)
 
+type Note = (NoteName, Int)
+
+  
 {- |
 MIDI Pitch, in range 0-128.
 -}
@@ -103,27 +108,24 @@ rotateWith func n xs = sort $ newStart ++ (map func newEnd)
 -------------------------
 -- Notes and intervals --
 -------------------------
-midiToNote x = names !! ((x - 24) `rem` 12)
-  where names = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"]
-
 noteToMidi :: Note -> Pitch
-noteToMidi C = 60
-noteToMidi Cs = 61
-noteToMidi Db = 61
-noteToMidi D = 62
-noteToMidi Ds = 63
-noteToMidi Eb = 63
-noteToMidi E = 64
-noteToMidi F = 65
-noteToMidi Fs = 66
-noteToMidi Gb = 66
-noteToMidi G = 67
-noteToMidi Gs = 68
-noteToMidi Ab = 68
-noteToMidi A = 69
-noteToMidi As = 70
-noteToMidi Bb = 70
-noteToMidi B = 71
+noteToMidi (C, x)  = 60 + 12 * (x - 4)
+noteToMidi (Cs, x) = 61 + 12 * (x - 4)
+noteToMidi (Db, x) = 61 + 12 * (x - 4)
+noteToMidi (D, x)  = 62 + 12 * (x - 4)
+noteToMidi (Ds, x) = 63 + 12 * (x - 4)
+noteToMidi (Eb, x) = 63 + 12 * (x - 4)
+noteToMidi (E, x)  = 64 + 12 * (x - 4)
+noteToMidi (F, x)  = 65 + 12 * (x - 4)
+noteToMidi (Fs, x) = 66 + 12 * (x - 4)
+noteToMidi (Gb, x) = 66 + 12 * (x - 4)
+noteToMidi (G, x)  = 67 + 12 * (x - 4)
+noteToMidi (Gs, x) = 68 + 12 * (x - 4)
+noteToMidi (Ab, x) = 68 + 12 * (x - 4)
+noteToMidi (A, x)  = 69 + 12 * (x - 4)
+noteToMidi (As, x) = 70 + 12 * (x - 4)
+noteToMidi (Bb, x) = 70 + 12 * (x - 4)
+noteToMidi (B, x)  = 71 + 12 * (x - 4)
 
 
 {- |
@@ -390,7 +392,7 @@ data Harmony = Harmony [MelodicInterval] [Sequence] --tonalità - accordi
 A simple harmony with no modulation; it is basically a `Sequence`.
 -}
 emptyHarmony :: Sequence -> Harmony
-emptyHarmony seq = Harmony [Up Unison] [seq]
+emptyHarmony seq' = Harmony [Up Unison] [seq']
 
 circleFifths :: Harmony
 circleFifths = Harmony ints seqs
@@ -416,10 +418,10 @@ realizeHarmony note harmony = realizeHarmonyWith note realizeSeq harmony
 function (eg. `realizeSeqCompact`).
 -}
 realizeHarmonyWith :: Pitch -> (Pitch -> Sequence -> [[Pitch]]) -> Harmony -> [[Pitch]]
-realizeHarmonyWith note seqRealizer (Harmony is seq) =
+realizeHarmonyWith note seqRealizer (Harmony is seq') =
   concatMap (\(tonica, s) -> seqRealizer tonica s) zipped
   where bassline = scanl (\acc i -> jump acc i) note is
-        zipped   = zip bassline seq
+        zipped   = zip bassline seq'
 
 
 ------------------------------------------------------------------------------------
@@ -476,7 +478,7 @@ makeMidiFileFromTrack track = MidiFile (MidiHeader MF0 1 (TPB 80)) [track]
  BPM to MIDI tempo converter.
 -}
 bpmToMidiTempo :: Word32 -> Word32
-bpmToMidiTempo bpm = 60_000_000 `div` bpm
+bpmToMidiTempo bpm' = 60_000_000 `div` bpm'
 
 
 -- | ** Examples
@@ -485,7 +487,7 @@ exampleHarmony :: Harmony
 exampleHarmony = circleFifths
 
 examplePitches :: [[Pitch]]
-examplePitches = realizeHarmonyWith (noteToMidi C) realizeSeq exampleHarmony
+examplePitches = realizeHarmonyWith (noteToMidi (C, 4)) realizeSeq exampleHarmony
 
 exampleMidiFile :: MidiFile
 exampleMidiFile = makeMidiFile (MidiOptions 80 Nothing Nothing) examplePitches
