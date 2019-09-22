@@ -12,7 +12,8 @@ import Data.Maybe (isNothing, fromJust)
 mainChordParserTest :: IO ()
 mainChordParserTest = hspec $
   describe "HP.parser" $ do
-    it "doesn't crash" $ chords_prop
+    it "doesn't crash on syntactically correct chords" $ chords_prop
+  
 
 chords_prop = forAll genChord $
   \s -> length (stringToPitches s) > 0

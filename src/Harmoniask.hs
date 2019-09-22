@@ -427,12 +427,12 @@ realizeHarmonyWith note seqRealizer (Harmony is seq) =
 -- ** Midi Exporting
 
 {- |
- Creates a complete MIDI file given a `MidiTrack`.
+ Translates [Pitch] into MIDI messages.
 -}
-createMidiFile :: MidiTrack -> MidiFile
-createMidiFile track =
-  MidiFile (MidiHeader MF0 1 (TPB 80))
-           [track] --only 1 track!
+midiChorder :: [Pitch] -> [MidiMessage]
+midiChorder c = concat $ [notesOn, notesOff]
+  where notesOn  = map (\pitch -> (0, VoiceEvent RS_OFF (NoteOn 0 (fromIntegral pitch) 100))) c
+        notesOff = map (\pitch -> (32, VoiceEvent RS_OFF (NoteOff 0 (fromIntegral pitch) 0))) c
 
 
 data MidiOptions = MidiOptions
@@ -445,34 +445,32 @@ data MidiOptions = MidiOptions
  Given a list of chords (i.e. `[[Pitch]]`) returns a `MidiTrack`.
 -}
 makeTrack :: MidiOptions -> [[Pitch]] -> MidiTrack
-makeTrack (MidiOptions bpm mayShortest mayTuning) chords =
-  MidiTrack $ (trackPreamble bpm mayTuning) ++ concatMap midiChorder chords
+makeTrack midiOptions chords = MidiTrack $
+  trackPreamble midiOptions ++ concatMap midiChorder chords
 
-  where seqRealizer = if isNothing mayShortest then realizeSeq else realizeSeqCompact
-
-
-trackPreamble :: Word32 -> Maybe HT.Temperament -> [MidiMessage]
-trackPreamble bpm tuning = 
-  [ (0,MetaEvent (SetTempo $ bpmToMidiTempo bpm))
+trackPreamble :: MidiOptions -> [MidiMessage]
+trackPreamble midiOptions = 
+  [ (0,MetaEvent (SetTempo $ bpmToMidiTempo $ bpm midiOptions))
   , (0,MetaEvent (TimeSignature 4 2 24 8))        -- 4/4
   , (0,VoiceEvent RS_OFF (ProgramChange 0 0))     -- instrument
   ] ++ tuningMessage
   
-  where tuningMessage = if isNothing tuning 
+  where tuningMessage = if isNothing $ tuning midiOptions 
                         then [(0, MetaEvent (TextEvent SEQUENCE_NAME "Standard tuning!"))]
-                        -- else HT.changeTuningMessage (fromJust tuning)
-                        else HT.splitTuningMessage $ HT.changeTuningMessage (fromJust tuning)
-
+                        else HT.splitTuningMessage $ HT.changeTuningMessage (fromJust $ tuning midiOptions)
 
 {- |
- Translates [Pitch] into MIDI messages.
+ Creates a complete MIDI file given a list of realized chords.
 -}
-midiChorder :: [Pitch] -> [MidiMessage]
-midiChorder c = concat $ [notesOn, notesOff]
-  where notesOn  = map (\pitch -> (0, VoiceEvent RS_OFF (NoteOn 0 (fromIntegral pitch) 100))) c
-        notesOff = map (\pitch -> (64, VoiceEvent RS_OFF (NoteOff 0 (fromIntegral pitch) 0))) c
+makeMidiFile :: MidiOptions -> [[Pitch]] -> MidiFile
+makeMidiFile midiOptions chords = makeMidiFileFromTrack track 
+  where track = makeTrack midiOptions chords -- Only 1 track!
 
-
+{- |
+Same, but starting from an already constructed `MidiTrack`.
+-}
+makeMidiFileFromTrack :: MidiTrack -> MidiFile
+makeMidiFileFromTrack track = MidiFile (MidiHeader MF0 1 (TPB 80)) [track] 
 
 {- |
  BPM to MIDI tempo converter.
@@ -481,20 +479,19 @@ bpmToMidiTempo :: Word32 -> Word32
 bpmToMidiTempo bpm = 60_000_000 `div` bpm
 
 
+-- | ** Examples
 
-
-
-
-
-writeMidiFile :: String -> MidiFile -> IO ()
-writeMidiFile = writeMidi
-
-
-
+exampleHarmony :: Harmony
 exampleHarmony = circleFifths
+
+examplePitches :: [[Pitch]]
 examplePitches = realizeHarmonyWith (noteToMidi C) realizeSeq exampleHarmony
-exampleTrack = makeTrack (MidiOptions 50 Nothing Nothing) examplePitches
-exampleWrite = writeMidiFile "examples/chordsEq.mid" $ createMidiFile $ exampleTrack
+
+exampleMidiFile :: MidiFile
+exampleMidiFile = makeMidiFile (MidiOptions 80 Nothing Nothing) examplePitches
+
+exampleWrite :: IO ()
+exampleWrite = writeMidi "examples/chordsEq.mid" exampleMidiFile
 
 
       

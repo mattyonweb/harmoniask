@@ -62,7 +62,7 @@ parsedToPitches (ParsedChord (tonic, mayAcc) tonality form colorNotes) =
         colNs = map (\(ColorNote i acc) ->
                        if acc == Nothing
                        then i
-                       else alter i (fromJust acc)) colorNotes
+                       else alterInterval i (fromJust acc)) colorNotes
         addNoteComb = foldr (|>) id (map addOnTop colNs)
         chordIntervals = (addNoteComb |> specialForm) baseChord
           
@@ -117,20 +117,12 @@ chord = do
   cols  <- many colorNoteParser
   return $ ParsedChord tonik ton form cols
   
-stringToPitches :: String -> [Pitch]
-stringToPitches = parsedToPitches . fst . last . readP_to_S chord
+stringToPitches :: String -> Either String [Pitch]
+stringToPitches s = fmap parsedToPitches $ result $ readP_to_S chord s
+  where result [] = Left $ "ERROR: the chord " ++ s ++ " could not be parsed."
+        result xs = case last xs of
+            (x, []) -> Right $ fst $ last xs
+            (x, ys) -> Left  $ "ERROR: could not parse this section " ++ ys ++ " of the chord " ++ s
 
--- stringToPitches2 :: String -> Maybe [Pitch]
--- stringToPitches2 s = fmap parsedToPitches $ result $ readP_to_S chord s
---   where result [] = Nothing
---         result xs = Just $ fst $ last xs
-
--- stringToPitches22 :: String -> Maybe [Pitch]
--- stringToPitches22 s = fmap parsedToPitches $ result $ readP_to_S chord s
---   where result [] = Nothing
---         result xs = Just $ fst $ last xs
-        
--- stringToPitches3 :: String -> Either String [Pitch]
--- stringToPitches3 s = fmap parsedToPitches $ result $ readP_to_S chord s
---   where result [] = Left $ "Parser could not parse the chord " ++ s
---         result xs = Right $ fst $ last xs
+stringToPitchesUnsafe :: String -> [Pitch]
+stringToPitchesUnsafe = parsedToPitches . fst . last . readP_to_S chord

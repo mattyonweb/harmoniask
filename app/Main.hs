@@ -5,7 +5,9 @@ import Harmoniask.Parser as HP
 import Harmoniask.Tunings as HT
 import Data.Word (Word32)
 import Data.List (intercalate)
+import Control.Monad (sequence)
 import Options.Applicative
+import ZMidi.Core (writeMidi)
 
 data MyApp = MyApp { inputFile  :: String
                    , outputFile :: String
@@ -60,8 +62,12 @@ application fnameIn fnameOut options = do
   rawInput <- readFile fnameIn
   
   let chords = map HP.stringToPitches $ words rawInput
-  
-  writeMidiFile fnameOut $
-    createMidiFile $
-      makeTrack options chords
+
+  case sequence chords of
+    Right cs -> do
+      writeMidi fnameOut $ makeMidiFile options cs
+      return ()
+    Left reason -> do
+      putStrLn reason
+      return ()
 

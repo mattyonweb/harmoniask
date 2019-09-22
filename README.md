@@ -79,7 +79,7 @@ Creating `Harmony`s, a collection of sequences in different tonalities:
 		where intervals = concat $ replicate 6 [Up Fourth, Down Fifth]
 		sequences       = replicate 12 ii_v_i
 
-	> circleFifths
+	λ> circleFifths
 	Harmony 
 		[Up Fourth, Down Fifth, Up Fourth, Down Fifth...] 
 		[Sequence [SecondMaj,Fifth,Unison] 
@@ -99,5 +99,3 @@ Exporting to a Midi file:
 	λ> writeMidiFile "examples/out.mid" $ createMidiFile $ exampleTrack
 
 [Here](examples/out.mid) is the result.
-
-
